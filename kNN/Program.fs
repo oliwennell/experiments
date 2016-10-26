@@ -3,45 +3,76 @@
 open System
 open System.IO
 
-type TrainingImage = {
-    GrayscalePixels: byte[];
-    DigitRepresented: byte;
-}
+[<AutoOpen>]
+module Types =
 
-type TrainingSet = {
-    Width: int;
-    Height: int;
-    Images: TrainingImage[]
-}
+    type Image = {
+        GreyscalePixels: byte[][];
+        Digit: byte;
+    }
 
-let trainingSetFromMnistDataset (rawImageData:Stream, rawLabelData:Stream) =
-    
-    use imageReader = new BinaryReader(rawImageData)
-    use labelReader = new BinaryReader(rawLabelData)
+    type ImageSet = {
+        Width: int;
+        Height: int;
+        Images: Image[]
+    }
 
-    let readInt32FromMsb (reader:BinaryReader) =  
-        let intAsLsbBytes =
-            [| reader.ReadByte(); reader.ReadByte(); reader.ReadByte(); reader.ReadByte() |]
-            |> Array.rev
-        BitConverter.ToInt32(intAsLsbBytes, 0)
+module ImageSet =
 
-    readInt32FromMsb imageReader |> fun x -> if x <> 2051 then raise (System.ArgumentException("Image data not in expected format"))
-    readInt32FromMsb labelReader |> fun x -> if x <> 2049 then raise (System.ArgumentException("Label data not in expected format"))
+    let fromMnistDataset rawImageData rawLabelData =
+        
+        use imageReader = new BinaryReader(rawImageData)
+        use labelReader = new BinaryReader(rawLabelData)
 
-    let numImages = readInt32FromMsb imageReader
-    readInt32FromMsb labelReader |> fun x -> if x <> numImages then raise (System.ArgumentException("Mismatch between number of images and number of labels"))
+        let readInt32FromMsb (reader : BinaryReader) =  
+            let intAsLsbBytes =
+                [| reader.ReadByte(); reader.ReadByte(); reader.ReadByte(); reader.ReadByte() |]
+                |> Array.rev
+            BitConverter.ToInt32(intAsLsbBytes, 0)
 
-    printfn "Number of images: %i" numImages
+        readInt32FromMsb imageReader |> fun x -> if x <> 2051 then raise (System.ArgumentException("Image data not in expected format"))
+        readInt32FromMsb labelReader |> fun x -> if x <> 2049 then raise (System.ArgumentException("Label data not in expected format"))
 
-    { Width=1; Height=1; Images=Array.empty }
+        let numImages = readInt32FromMsb imageReader
+        readInt32FromMsb labelReader |> fun x -> if x <> numImages then raise (System.ArgumentException("Mismatch between number of images and number of labels"))
+
+        let imageWidth = readInt32FromMsb imageReader
+        let imageHeight = readInt32FromMsb imageReader
+
+        let readImagePixels (imageWidth, imageHeight, reader: BinaryReader) =
+            let readPixelRow (imageWidth, reader: BinaryReader) = 
+                seq { for x in 1 .. imageWidth -> reader.ReadByte() } |> Seq.toArray 
+            
+            seq { for y in 1 .. imageHeight -> readPixelRow(imageWidth, reader) } |> Seq.toArray        
+
+        let images = seq { for _ in 1 .. numImages -> 
+                            { 
+                                Digit = labelReader.ReadByte(); 
+                                GreyscalePixels = readImagePixels(imageWidth, imageHeight, imageReader)
+                            }
+                        }
+                        |> Seq.toArray
+        
+        { 
+            Width = imageWidth; 
+            Height = imageHeight; 
+            Images = images
+        }
 
 [<EntryPoint>]
 let main argv = 
-    printfn "Hello..."
+    printfn "Reading training data..."
 
-    use rawImageData = File.OpenRead "train-images-idx3-ubyte"
-    use rawLabelData = File.OpenRead "train-labels-idx1-ubyte"
-    let trainingSet = trainingSetFromMnistDataset (rawImageData, rawLabelData)
+    let trainingSet = ImageSet.fromMnistDataset 
+                        (File.OpenRead "train-images-idx3-ubyte") 
+                        (File.OpenRead "train-labels-idx1-ubyte")
 
-    printfn "...world"
+    printfn "There are %i images" trainingSet.Images.Length
+
+    for y in 0 .. trainingSet.Height-1 do
+        for x in 0 .. trainingSet.Width-1 do
+            printf "%02X" trainingSet.Images.[0].GreyscalePixels.[y].[x]
+        printfn ""
+
+    printfn "kthxbye"
     0
