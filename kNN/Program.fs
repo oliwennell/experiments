@@ -1,78 +1,55 @@
-﻿// Learn more about F# at http://fsharp.org
-
+﻿
+open kNN
 open System
 open System.IO
 
-[<AutoOpen>]
-module Types =
-
-    type Image = {
-        GreyscalePixels: byte[][];
-        Digit: byte;
-    }
-
-    type ImageSet = {
-        Width: int;
-        Height: int;
-        Images: Image[]
-    }
-
-module ImageSet =
-
-    let fromMnistDataset rawImageData rawLabelData =
+let printClassification classification =
+    
+    let printSingleImage imageIndex = 
+        let image = classification.Images.[imageIndex]
+        let actual = image.Digit
+        printfn "Image is %i" actual
         
-        use imageReader = new BinaryReader(rawImageData)
-        use labelReader = new BinaryReader(rawLabelData)
-
-        let readInt32FromMsb (reader : BinaryReader) =  
-            let intAsLsbBytes =
-                [| reader.ReadByte(); reader.ReadByte(); reader.ReadByte(); reader.ReadByte() |]
-                |> Array.rev
-            BitConverter.ToInt32(intAsLsbBytes, 0)
-
-        readInt32FromMsb imageReader |> fun x -> if x <> 2051 then raise (System.ArgumentException("Image data not in expected format"))
-        readInt32FromMsb labelReader |> fun x -> if x <> 2049 then raise (System.ArgumentException("Label data not in expected format"))
-
-        let numImages = readInt32FromMsb imageReader
-        readInt32FromMsb labelReader |> fun x -> if x <> numImages then raise (System.ArgumentException("Mismatch between number of images and number of labels"))
-
-        let imageWidth = readInt32FromMsb imageReader
-        let imageHeight = readInt32FromMsb imageReader
-
-        let readImagePixels (imageWidth, imageHeight, reader: BinaryReader) =
-            let readPixelRow (imageWidth, reader: BinaryReader) = 
-                seq { for x in 1 .. imageWidth -> reader.ReadByte() } |> Seq.toArray 
-            
-            seq { for y in 1 .. imageHeight -> readPixelRow(imageWidth, reader) } |> Seq.toArray        
-
-        let images = seq { for _ in 1 .. numImages -> 
-                            { 
-                                Digit = labelReader.ReadByte(); 
-                                GreyscalePixels = readImagePixels(imageWidth, imageHeight, imageReader)
-                            }
-                        }
-                        |> Seq.toArray
+        for row in 0 .. image.Size-1 do
+            for column in 0 .. image.Size-1 do
+                printf "%02X" image.GreyscalePixels.[row,column]
+            printfn ""
         
-        { 
-            Width = imageWidth; 
-            Height = imageHeight; 
-            Images = images
-        }
+        let classifiedAs = classification.ClassifiedDigits.[imageIndex]
+        let wasCorrect = actual = classifiedAs
+
+        printfn "... and has been classified as %i => %s" classifiedAs (if wasCorrect then "true" else "FALSE")
+        printfn ""
+        
+        wasCorrect
+
+    seq { for i in 0 .. classification.Images.Length-1 do yield printSingleImage i }
+
+let calculateAccuracy results =
+    let numSuccess = Seq.where (fun r -> r) results |> Seq.length
+    let total = Array.length results
+    (float)(numSuccess / total) * 100.0
 
 [<EntryPoint>]
 let main argv = 
     printfn "Reading training data..."
 
-    let trainingSet = ImageSet.fromMnistDataset 
-                        (File.OpenRead "train-images-idx3-ubyte") 
-                        (File.OpenRead "train-labels-idx1-ubyte")
+    use trainingImageData = File.OpenRead "train-images-idx3-ubyte" 
+    use trainingLabelData = File.OpenRead "train-labels-idx1-ubyte"
+    let trainingImages = Images.fromMnistDataset trainingImageData trainingLabelData
+    printfn "There are %i training images" trainingImages.Length
 
-    printfn "There are %i images" trainingSet.Images.Length
+    use testImageData = File.OpenRead "t10k-images-idx3-ubyte" 
+    use testLabelData = File.OpenRead "t10k-labels-idx1-ubyte"
+    let testImages = Images.fromMnistDataset testImageData testLabelData
+    printfn "There are %i test images" testImages.Length
 
-    for y in 0 .. trainingSet.Height-1 do
-        for x in 0 .. trainingSet.Width-1 do
-            printf "%02X" trainingSet.Images.[0].GreyscalePixels.[y].[x]
-        printfn ""
+    testImages
+    |> Images.classify
+    |> printClassification
+    |> Seq.toArray
+    |> calculateAccuracy
+    |> printfn "Accuracy: %1.2f%%"
 
     printfn "kthxbye"
     0
