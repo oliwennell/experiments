@@ -7,19 +7,21 @@ module Images =
 
     let classify trainingImages images =  
 
-        let totalDistanceBetween image1 image2 =
+        let totalSqDistBetween image1 image2 =
             seq { for y in 0..image1.Size-1 do
                     for x in 0..image1.Size-1 do
-                        yield pown ((double)image2.GreyscalePixels.[y,x] - (double)image1.GreyscalePixels.[y,x]) 2 }
+                        let p1 = (double)image1.GreyscalePixels.[y,x]
+                        let p2 = (double)image2.GreyscalePixels.[y,x]
+                        yield pown (p2 - p1) 2 }
             |> Seq.sum
 
         let classifyImage trainingImages image =
             printf "."
+            
             let closestNeighbours = trainingImages 
-                                    |> Array.map (fun ti -> (ti.Digit, (totalDistanceBetween ti image) ) )   
+                                    |> Array.map (fun ti -> (ti.Digit, (totalSqDistBetween ti image) ) )   
                                     |> Array.sortBy (fun x -> snd x)
                                     |> Array.take 5
-                                    
                     
             let mostPopularDigit = closestNeighbours
                                     |> Array.groupBy (fun x -> fst x) 

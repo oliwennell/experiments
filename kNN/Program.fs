@@ -22,8 +22,6 @@ let printResults classification =
         printfn "... and has been classified as %i => %s" classifiedAs (if wasCorrect then "true" else "FALSE")
         printfn ""
 
-        printf (if wasCorrect then "1" else "0")
-        
         wasCorrect
 
     seq { for i in 0 .. classification.Images.Length-1 do yield printSingleImage i }
