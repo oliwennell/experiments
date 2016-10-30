@@ -5,7 +5,7 @@ open System.IO
 
 module Images =
 
-    let classify images =  
+    let classify trainingImages images =  
 
         let totalDistanceBetween image1 image2 =
             seq { for y in 0..image1.Size-1 do
@@ -14,18 +14,25 @@ module Images =
             |> Seq.sum
 
         let classifyImage trainingImages image =
-            trainingImages 
-            |> Array.map (fun ti -> (ti.Digit, (totalDistanceBetween ti image) ) )   
-            |> Array.sortBy (fun x -> snd x)
-            |> Array.groupBy (fun x -> fst x)
-            |> Array.map (fun x -> (fst x, Array.length (snd x)))
-            |> Array.sortByDescending (fun x -> snd x)
-            |> Array.item 0
-            |> fst
-            
+            printf "."
+            let closestNeighbours = trainingImages 
+                                    |> Array.map (fun ti -> (ti.Digit, (totalDistanceBetween ti image) ) )   
+                                    |> Array.sortBy (fun x -> snd x)
+                                    |> Array.take 5
+                                    
+                    
+            let mostPopularDigit = closestNeighbours
+                                    |> Array.groupBy (fun x -> fst x) 
+                                    |> Array.map (fun x -> (fst x, Array.length (snd x)))
+                                    |> Array.sortByDescending (fun x -> snd x)
+                                    |> Array.item 0
+                                    |> fst
+            mostPopularDigit
+
+        printfn "Classifying %i images with %i training images" (Array.length images) (Array.length trainingImages)
         { 
             Images = images;
-            ClassifiedDigits = images |> Array.map (fun i -> classifyImage images i) 
+            ClassifiedDigits = images |> Array.map (fun i -> classifyImage trainingImages i) 
         }
         
     let fromMnistDataset rawImageData rawLabelData =
@@ -56,8 +63,7 @@ module Images =
                             
             Array2D.init imageSize imageSize (fun y x -> allPixels.[(y*imageSize)+x])  
 
-        //let images = seq { for _ in 1 .. numImages -> 
-        seq { for _ in 1 .. 3 -> 
+        seq { for _ in 1 .. numImages -> 
                 { 
                     Digit = labelReader.ReadByte(); 
                     GreyscalePixels = readImagePixels(imageSize, imageReader);

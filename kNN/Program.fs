@@ -8,18 +8,20 @@ let printClassification classification =
     let printSingleImage imageIndex = 
         let image = classification.Images.[imageIndex]
         let actual = image.Digit
-        printfn "Image is %i" actual
+        //printfn "Image is %i" actual
         
-        for row in 0 .. image.Size-1 do
-            for column in 0 .. image.Size-1 do
-                printf "%02X" image.GreyscalePixels.[row,column]
-            printfn ""
+        // for row in 0 .. image.Size-1 do
+        //     for column in 0 .. image.Size-1 do
+        //         printf "%02X" image.GreyscalePixels.[row,column]
+        //     printfn ""
         
         let classifiedAs = classification.ClassifiedDigits.[imageIndex]
         let wasCorrect = actual = classifiedAs
 
-        printfn "... and has been classified as %i => %s" classifiedAs (if wasCorrect then "true" else "FALSE")
-        printfn ""
+        //printfn "... and has been classified as %i => %s" classifiedAs (if wasCorrect then "true" else "FALSE")
+        //printfn ""
+
+        printf (if wasCorrect then "1" else "0")
         
         wasCorrect
 
@@ -28,7 +30,7 @@ let printClassification classification =
 let calculateAccuracy results =
     let numSuccess = Seq.where (fun r -> r) results |> Seq.length
     let total = Array.length results
-    (float)(numSuccess / total) * 100.0
+    ((float)numSuccess / (float)total) * 100.0
 
 [<EntryPoint>]
 let main argv = 
@@ -45,7 +47,8 @@ let main argv =
     printfn "There are %i test images" testImages.Length
 
     testImages
-    |> Images.classify
+    |> Array.take 200
+    |> Images.classify trainingImages
     |> printClassification
     |> Seq.toArray
     |> calculateAccuracy
