@@ -3,23 +3,24 @@ open kNN
 open System
 open System.IO
 
-let printClassification classification =
+let printResults classification =
     
     let printSingleImage imageIndex = 
         let image = classification.Images.[imageIndex]
-        let actual = image.Digit
-        //printfn "Image is %i" actual
         
-        // for row in 0 .. image.Size-1 do
-        //     for column in 0 .. image.Size-1 do
-        //         printf "%02X" image.GreyscalePixels.[row,column]
-        //     printfn ""
+        let actual = image.Digit
+        printfn "Image is %i" actual
+        
+        for row in 0 .. image.Size-1 do
+            for column in 0 .. image.Size-1 do
+                printf "%02X" image.GreyscalePixels.[row,column]
+            printfn ""
         
         let classifiedAs = classification.ClassifiedDigits.[imageIndex]
         let wasCorrect = actual = classifiedAs
 
-        //printfn "... and has been classified as %i => %s" classifiedAs (if wasCorrect then "true" else "FALSE")
-        //printfn ""
+        printfn "... and has been classified as %i => %s" classifiedAs (if wasCorrect then "true" else "FALSE")
+        printfn ""
 
         printf (if wasCorrect then "1" else "0")
         
@@ -34,25 +35,28 @@ let calculateAccuracy results =
 
 [<EntryPoint>]
 let main argv = 
-    printfn "Reading training data..."
-
+    printfn "Reading training images..."
     use trainingImageData = File.OpenRead "train-images-idx3-ubyte" 
     use trainingLabelData = File.OpenRead "train-labels-idx1-ubyte"
     let trainingImages = Images.fromMnistDataset trainingImageData trainingLabelData
     printfn "There are %i training images" trainingImages.Length
 
+    printfn "Reading test images..."
     use testImageData = File.OpenRead "t10k-images-idx3-ubyte" 
     use testLabelData = File.OpenRead "t10k-labels-idx1-ubyte"
     let testImages = Images.fromMnistDataset testImageData testLabelData
     printfn "There are %i test images" testImages.Length
 
+    let startIndex = if (Array.length argv) > 0 then System.Int32.Parse(argv.[0]) else 0
+    let numToClassify = if (Array.length argv) > 1 then System.Int32.Parse(argv.[1]) else 5
+
     testImages
-    |> Array.take 200
+    |> Array.skip startIndex
+    |> Array.take numToClassify
     |> Images.classify trainingImages
-    |> printClassification
+    |> printResults
     |> Seq.toArray
     |> calculateAccuracy
     |> printfn "Accuracy: %1.2f%%"
 
-    printfn "kthxbye"
     0
