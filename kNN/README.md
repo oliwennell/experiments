@@ -1,4 +1,4 @@
-This experiment takes in images of hand-drawn digits and determines which digit is represented, using the k Nearest Neighbor algorithm.
+This experiment takes in images of hand-drawn digits and determines which digits they represent. It does this via the k Nearest Neighbor algorithm.
 
 Both the input images and the images used as training data are from [the MNIST database](http://yann.lecun.com/exdb/mnist/).
 
